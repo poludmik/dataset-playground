@@ -6,7 +6,9 @@ dataset = datasets.load_dataset('berkeley-nest/Nectar')
 # dataset = datasets.load_from_disk('berkeley-nest/Nectar')
 
 # save the dataset to disk
-dataset.save_to_disk("downloads/Nectar")
+# dataset.save_to_disk("downloads/Nectar")
+
+print(len(dataset["train"]))
 
 # create a range of random numbers
 # indices = random.sample(range(len(dataset["train"])), 10)
