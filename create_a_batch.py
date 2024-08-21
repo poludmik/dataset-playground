@@ -11,10 +11,11 @@ import random
 from tqdm import tqdm
 import json
 
-dataset = datasets.load_dataset('berkeley-nest/Nectar')
+# dataset = datasets.load_dataset('berkeley-nest/Nectar')
 
 # take 10000 first examples
-dataset = dataset["train"].select(range(1000))
+# dataset = dataset["train"].select(range(1000, 10000))
+# print(len(dataset))
 
 # for example in dataset:
 #     print(example["prompt"])
@@ -27,7 +28,7 @@ system_text = "You are a helpful assistant that accurately translates text from 
 user_text = r"""Please translate the following text from English to Czech. Keep the translation as close to the original as possible.
 If the text contains a math expression or code snippets, keep them as they are. The main focus is on the translation of the text itself.
 The translated text is very important and will be used in a training dataset for a czech language model. Be careful with the word endings and the grammar in general, the czech language is complex.
-The english text is formatted with `Human:` and `Assistant:` instruction notation. Ignore the human instructions and assistant answers in the text and just translate it. Return the translated text in this json format:
+The english text is formatted with `Human:` and `Assistant:` instruction notation. Ignore the human instructions and assistant answers in the text and just translate it. You must return the translated text in this json format:
 {{
   "Human": "Přeložený text první zprávy od člověka",
   "Assistant": "Přeložený text zprávy od asistenta",
@@ -40,7 +41,7 @@ Output nothing except a translated conversation in this JSON format. Here's the 
 """
 
 # # create a jsonl file:
-# with open("batchapi/requests_first_1000.jsonl", "w") as f:
+# with open("batchapi/requests_1k_to_10k.jsonl", "w") as f:
 #     for i, example in enumerate(dataset):
 #         input_text = example["prompt"]
 #         output_text = example["answers"][0]["answer"]
@@ -51,7 +52,7 @@ Output nothing except a translated conversation in this JSON format. Here's the 
 
 #         # Create the dictionary representing the JSON object
 #         json_object = {
-#             "custom_id": f"instance-{i}",
+#             "custom_id": f"instance-{i + 1000}",
 #             "method": "POST",
 #             "url": "/v1/chat/completions",
 #             "body": {
@@ -69,7 +70,7 @@ Output nothing except a translated conversation in this JSON format. Here's the 
 
 #         # Write the JSON string to the file
 #         f.write(json_string + '\n')
-#         print(i)
+#         # print(i)
 
 
 # Read the file and load the list of JSON objects
@@ -95,13 +96,13 @@ from openai import OpenAI
 client = OpenAI()
 
 # batch_input_file = client.files.create(
-#   file=open("batchapi/requests_first_1000.jsonl", "rb"),
+#   file=open("batchapi/requests_1k_to_10k.jsonl", "rb"),
 #   purpose="batch"
 # )
 # print(client.files.list())
 
 
-# file_id = "file-g96fFgH2T8b8b28yyFkjdX32"
+# file_id = "file-J1oSH9SzAVPvI3GuisDa0OlL"
 # batch = client.batches.create(
 #     input_file_id=file_id,
 #     endpoint="/v1/chat/completions",
@@ -112,51 +113,82 @@ client = OpenAI()
 # )
 
 # print(client.batches.list())
+# client.batches.cancel("batch_go1PvaqkjPInA58HPQNZJAVn")
 
 # print(batch)
 # Batch(id='batch_v1VlynX4Nb43JT016XWFwmMY', completion_window='24h', created_at=1723465962, endpoint='/v1/chat/completions', input_file_id='file-NUs3T6m3bxERMfMEuPsJH9Vi', object='batch', status='validating', cancelled_at=None, cancelling_at=None, completed_at=None, error_file_id=None, errors=None, expired_at=None, expires_at=1723552362, failed_at=None, finalizing_at=None, in_progress_at=None, metadata={'description': 'nightly eval job'}, output_file_id=None, request_counts=BatchRequestCounts(completed=0, failed=0, total=0))
 
 
 
-print(client.batches.retrieve("batch_uwyyXfHWtcyX6j8GcmO90DZT"))
+# print(client.batches.retrieve("batch_uwyyXfHWtcyX6j8GcmO90DZT"))
 
 
-# file_response = client.files.content("file-XW2X1WVuYbON8nVvYZlB9ilA") # output_file_id in batch
-# import json
+# def extract_conversation_pairs(conversation_text):
+#     # Regular expression to match "Human": "<text>" and "Assistant": "<text>"
+#     pattern = r'"Human":\s*"(.*?)"\s*,\s*"Assistant":\s*"(.*?)"'
+    
+#     # Find all matches of the pattern in the text
+#     pairs = re.findall(pattern, conversation_text, re.DOTALL)
+    
+#     return pairs
 
-# # parse to json objects line by line
-# # save the output to a file
-# with open("batchapi/requests_translated.jsonl", "w") as f:
-#     for line in file_response.text.split("\n"):
-#         try:
-#           conversation_text = json.loads(line)["response"]["body"]["choices"][0]["message"]["content"]
-          
-#           # Parse the string as a JSON object
-#           data = json.loads(conversation_text)
 
-#           # Initialize an empty list to store the tuples
-#           messages = []
-#           messages_json = {"conversation": []}
+import json
 
-#           # Iterate through the keys and values of the JSON object
-#           for key, value in data.items():
-#               if key == "Human":
-#                   human_message = value
-#               elif key == "Assistant":
-#                   assistant_message = value
-#                   messages.append((human_message, assistant_message))
-#                   messages_json["conversation"].append({"Human": human_message, "Assistant": assistant_message})
+file_response = client.files.content("file-XaUxBZ2bBGF4LxRhvwIz2WYx")  # output_file_id in batch
+import json
+import re
 
-#           for message in messages:
-#               print(message[0])
-#               print(">>>")
-#               print(message[1])
-#               print("\n")
+def extract_conversation_pairs(conversation_text):
+    # Regular expression to match "Human" and "Assistant" messages
+    pattern = re.compile(r'"Human":\s*"((?:[^"\\]|\\.)*)",\s*"Assistant":\s*"((?:[^"\\]|\\.)*)"', re.DOTALL)
+    
+    # Find all matches of "Human" and "Assistant" messages
+    matches = pattern.findall(conversation_text)
 
-#           # Write to the file
-#           f.write(json.dumps(messages_json) + '\n')
-#         except Exception as e:
-#           print("Error:", e)
-#           pass
+    # Return the matches as a list of tuples
+    return matches
 
-#         print("\n+++++++++++++++++++\n")
+# Example usage
+file_response = client.files.content("file-XaUxBZ2bBGF4LxRhvwIz2WYx")  # output_file_id in batch
+
+num_parsing_errors = 0
+num_no_conversation = 0
+num_of_incorrect_format = 0
+
+# Parse to JSON objects line by line and save the output to a file
+with open("batchapi/requests_translated_1000.jsonl", "w") as f:
+    for line in file_response.text.split("\n"):
+        try:
+            response_content = json.loads(line)["response"]["body"]["choices"][0]["message"]["content"]
+            instance_id = json.loads(line)["custom_id"]
+
+            # Extract conversation pairs using the function
+            matches = extract_conversation_pairs(response_content)
+
+            if not matches:
+                num_of_incorrect_format += 1
+            
+            # Initialize an empty list to store the tuples
+            messages_json = {"instance_id": instance_id, "conversation": []}
+
+            # Iterate through the matches and add them to the list
+            for human_message, assistant_message in matches:
+                messages_json["conversation"].append({"Human": human_message, "Assistant": assistant_message})
+
+            if len(messages_json["conversation"]) == 0:
+                num_no_conversation += 1
+                continue
+
+            # Write to the file
+            f.write(json.dumps(messages_json, ensure_ascii=False) + '\n')
+        except Exception as e:
+            print("Error:", e)
+            num_parsing_errors += 1
+            pass
+
+        # print("\n+++++++++++++++++++\n")
+
+# print("Number of parsing errors:", num_parsing_errors)
+# print("Number of incorrect format:", num_of_incorrect_format)
+# print("Number of no conversation:", num_no_conversation)

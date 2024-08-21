@@ -2,6 +2,7 @@ import datasets
 import argparse
 from transformers import AutoTokenizer
 from tqdm import tqdm
+import json
 
 
 def format_one_instance(instance_in, instance_out, model_name, use_tokenizer=False):
@@ -77,11 +78,83 @@ def apply_format_and_save(dataset_folder, model_name, use_tokenizer=False):
     final_dataset.save_to_disk(f"{dataset_folder}_{model_name}")
 
 
+def format_one_instance_multiturn(conversation_list_of_pairs, model_name, use_tokenizer=False):
+
+    try:
+        if model_name == "google/gemma-2-2b-it":
+            current_input_text = ""
+            current_output_text = ""
+
+            for pair in conversation_list_of_pairs:
+                new_human_input = f"<start_of_turn>user\n{pair['Human']}<end_of_turn>\n<start_of_turn>model\n"
+                new_output = f"{pair['Assistant']}<end_of_turn>\n"
+
+                current_input_text += current_output_text + new_human_input
+                current_output_text = new_output
+
+                yield current_input_text, current_output_text
+
+    except Exception as e:
+        print(f"Error formatting for {model_name}: {e}")
+        return None
+                
+
+
+def apply_format_on_multiturn_jsonl(jsonl_file, model_name, use_tokenizer=False):
+    with open(jsonl_file, "r") as f:
+        data = f.readlines()
+        # Each line holds a conversation instance in a format like:
+        # {"instance_id": "instance-0", "conversation": [{"Human": "Hello", "Assistant": "Hi"}, {"Human": "How are you?", "Assistant": "I'm fine."}]}
+        # When the conversation is longer than n qa pairs, the dataset will contain n instances, which are incremental
+        # For the previous example, the dataset will contain 2 instances:
+        # f"<bos><start_of_turn>user\n{human_message_1}<end_of_turn>\n<start_of_turn>model\n", f"{assistant_message_1}<end_of_turn>\n"
+        # f"<bos><start_of_turn>user\n{human_message_1}<end_of_turn>\n<start_of_turn>model\n"{assistant_message_1}<end_of_turn>\n<start_of_turn>user\n{human_message_2}<end_of_turn>\n<start_of_turn>model\n", f"{assistant_message_2}<end_of_turn>\n"
+
+        # Initialize the final dataset as a dictionary of lists
+        dataset_entries = {
+            "input": [],
+            "output": [],
+            "source": []
+        }
+
+        # iterate over the lines - instances
+        for i, line in tqdm(enumerate(data)):
+            # load the instance as a json object
+            instance = json.loads(line)
+            source = instance["instance_id"] # e.g. "instance-0"
+            conversation = instance["conversation"] # a list with qa pairs
+
+            for input_text, out_text in format_one_instance_multiturn(conversation, model_name, use_tokenizer=use_tokenizer):
+                # Add the input, output, and source to the dataset entries
+                
+                print(input_text)
+                print("----")
+                print(out_text)
+                print("++++++++++++++++\n")
+
+                if input_text and out_text:
+                    dataset_entries["input"].append(input_text)
+                    dataset_entries["output"].append(out_text)
+                    dataset_entries["source"].append(source)
+                
+        # Save the dataset entries to a dataset
+        dataset = datasets.Dataset.from_dict(dataset_entries)
+        model_name = model_name.replace("/", "_")
+
+        # remove the .jsonl extension and the folder path
+        jsonl_file = jsonl_file.rstrip(".jsonl").split("/")[-1]
+        dataset.save_to_disk(f"downloads/{jsonl_file}_{model_name}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--d", type=str, help="Dataset folder")
     parser.add_argument("--m", type=str, help="Model name")
     parser.add_argument("--use_tokenizer", type=bool, default=False, help="Use tokenizer")
+    parser.add_argument("--from_batchapi", type=bool, default=False, help="Data from batchapi")
     args = parser.parse_args()
 
-    apply_format_and_save(args.d, args.m, use_tokenizer=args.use_tokenizer)
+    if args.from_batchapi:
+        apply_format_on_multiturn_jsonl(args.d, args.m, use_tokenizer=args.use_tokenizer)
+    else:
+        apply_format_and_save(args.d, args.m, use_tokenizer=args.use_tokenizer)
