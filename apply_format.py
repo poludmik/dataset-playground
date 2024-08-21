@@ -3,6 +3,7 @@ import argparse
 from transformers import AutoTokenizer
 from tqdm import tqdm
 import json
+import re
 
 
 def format_one_instance(instance_in, instance_out, model_name, use_tokenizer=False):
@@ -77,17 +78,27 @@ def apply_format_and_save(dataset_folder, model_name, use_tokenizer=False):
     dataset_folder = dataset_folder.rstrip("/")
     final_dataset.save_to_disk(f"{dataset_folder}_{model_name}")
 
+def unescape_string(s):
+    s = s.replace(r'\n', '\n')
+    s = s.replace(r'\t', '\t')
+    s = s.replace(r'\"', '"')
+    s = s.replace(r'\\', '\\')
+    # Add more replacements if necessary
+    return s
 
 def format_one_instance_multiturn(conversation_list_of_pairs, model_name, use_tokenizer=False):
-
     try:
         if model_name == "google/gemma-2-2b-it":
             current_input_text = ""
             current_output_text = ""
 
             for pair in conversation_list_of_pairs:
-                new_human_input = f"<start_of_turn>user\n{pair['Human']}<end_of_turn>\n<start_of_turn>model\n"
-                new_output = f"{pair['Assistant']}<end_of_turn>\n"
+                # Usage remains the same
+                human_message = unescape_string(pair['Human'])
+                assistant_message = unescape_string(pair['Assistant'])
+                
+                new_human_input = f"<start_of_turn>user\n{human_message}<end_of_turn>\n<start_of_turn>model\n"
+                new_output = f"{assistant_message}<end_of_turn>\n"
 
                 current_input_text += current_output_text + new_human_input
                 current_output_text = new_output
@@ -97,7 +108,6 @@ def format_one_instance_multiturn(conversation_list_of_pairs, model_name, use_to
     except Exception as e:
         print(f"Error formatting for {model_name}: {e}")
         return None
-                
 
 
 def apply_format_on_multiturn_jsonl(jsonl_file, model_name, use_tokenizer=False):

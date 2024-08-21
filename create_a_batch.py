@@ -119,23 +119,8 @@ client = OpenAI()
 # Batch(id='batch_v1VlynX4Nb43JT016XWFwmMY', completion_window='24h', created_at=1723465962, endpoint='/v1/chat/completions', input_file_id='file-NUs3T6m3bxERMfMEuPsJH9Vi', object='batch', status='validating', cancelled_at=None, cancelling_at=None, completed_at=None, error_file_id=None, errors=None, expired_at=None, expires_at=1723552362, failed_at=None, finalizing_at=None, in_progress_at=None, metadata={'description': 'nightly eval job'}, output_file_id=None, request_counts=BatchRequestCounts(completed=0, failed=0, total=0))
 
 
-
 # print(client.batches.retrieve("batch_uwyyXfHWtcyX6j8GcmO90DZT"))
 
-
-# def extract_conversation_pairs(conversation_text):
-#     # Regular expression to match "Human": "<text>" and "Assistant": "<text>"
-#     pattern = r'"Human":\s*"(.*?)"\s*,\s*"Assistant":\s*"(.*?)"'
-    
-#     # Find all matches of the pattern in the text
-#     pairs = re.findall(pattern, conversation_text, re.DOTALL)
-    
-#     return pairs
-
-
-import json
-
-file_response = client.files.content("file-XaUxBZ2bBGF4LxRhvwIz2WYx")  # output_file_id in batch
 import json
 import re
 
@@ -150,14 +135,14 @@ def extract_conversation_pairs(conversation_text):
     return matches
 
 # Example usage
-file_response = client.files.content("file-XaUxBZ2bBGF4LxRhvwIz2WYx")  # output_file_id in batch
+file_response = client.files.content("file-EYaLo6SabFURUtKwo8m7KSII")  # output_file_id in batch
 
 num_parsing_errors = 0
 num_no_conversation = 0
 num_of_incorrect_format = 0
 
 # Parse to JSON objects line by line and save the output to a file
-with open("batchapi/requests_translated_1000.jsonl", "w") as f:
+with open("batchapi/requests_translated_1k_to_10k.jsonl", "w") as f:
     for line in file_response.text.split("\n"):
         try:
             response_content = json.loads(line)["response"]["body"]["choices"][0]["message"]["content"]
