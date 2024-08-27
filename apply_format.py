@@ -29,7 +29,7 @@ def format_one_instance(instance_in, instance_out, model_name, use_tokenizer=Fal
             return input_text, out_text
         else:
             if model_name == "google/gemma-2-2b-it":
-                return f"<bos><start_of_turn>user\n{instance_in}<end_of_turn>\n<start_of_turn>model\n", f"{instance_out}<end_of_turn>\n"
+                return f"<bos><start_of_turn>user\n{instance_in}<end_of_turn>\n<start_of_turn>model\n", f"{instance_out}<end_of_turn><eos>"
             
     except Exception as e:
         print(f"Error loading tokenizer(formatter) for model {model_name}: {e}")
@@ -103,7 +103,7 @@ def format_one_instance_multiturn(conversation_list_of_pairs, model_name, use_to
                 current_input_text += current_output_text + new_human_input
                 current_output_text = new_output
 
-                yield current_input_text, current_output_text
+                yield "<bos>" + current_input_text, current_output_text + "<eos>"
 
     except Exception as e:
         print(f"Error formatting for {model_name}: {e}")
