@@ -8,6 +8,7 @@ The format is:
 
 import datasets
 import random
+import pandas as pd
 from tqdm import tqdm
 import json
 
@@ -173,3 +174,8 @@ with open("small_datasets/arc_challenge/arc_challenge_train_with_explanations.js
     for i in range(len(resulting_instances)):
         f.write(json.dumps({"instance": resulting_instances[i]}) + "\n")
 
+
+# creare a dataset object with a single column: "text"
+dataset = datasets.Dataset.from_pandas(pd.DataFrame(resulting_instances, columns=["text"]))
+# save to a file
+dataset.save_to_disk("small_datasets/arc_challenge/arc_challenge_gemma")
